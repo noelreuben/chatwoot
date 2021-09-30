@@ -14,6 +14,10 @@ class ApplicationMailbox < ActionMailbox::Base
           break
         end
       end
+      unless is_a_reply_email
+        inbound_mail_obj.mail['In-Reply-To'].try(:value).present?
+        is_a_reply_email = true
+      end
       is_a_reply_email
     end
   end

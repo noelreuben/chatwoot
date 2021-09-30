@@ -23,9 +23,7 @@ class ReplyMailbox < ApplicationMailbox
   def find_relative_conversation
     if @conversation_uuid
       find_conversation_with_uuid
-    elsif recipient_email_channel_conversations.present?
-      find_conversation_with_recipient
-    else
+    elsif mail['In-Reply-To'].try(:value).present?
       find_conversation_with_id
     end
   end
@@ -48,12 +46,6 @@ class ReplyMailbox < ApplicationMailbox
 
   def find_conversation_with_uuid
     @conversation = Conversation.find_by(uuid: conversation_uuid)
-    validate_resource @conversation
-  end
-
-  def find_conversation_with_recipient
-    @conversation = @conversations.last
-    @conversation_uuid = @conversation.uuid
     validate_resource @conversation
   end
 
@@ -81,25 +73,5 @@ class ReplyMailbox < ApplicationMailbox
 
   def conversation_with_recipient
     @conversation = Conversation.find_by(uuid: conversation_uuid)
-  end
-
-  def recipient_email_channel_conversations
-    @conversations = []
-    mail.to.each do |email|
-      inbox = Channel::Email.find_by(email: email).try(:inbox)
-      @conversations = collect_conversations(inbox)
-
-      break if @conversations.any?
-    end
-    @conversations
-  end
-
-  def collect_conversations(inbox)
-    return if inbox.nil?
-
-    inbox.conversations.joins(:contact).where(
-      "conversations.additional_attributes ->> 'mail_subject' = ? AND contacts.email IN (?)",
-      mail.subject, mail.from
-    )
   end
 end
